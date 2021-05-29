@@ -26,7 +26,7 @@ def clean_records(records:  list) -> list:
 
 def get_all_records_list() -> list:
     records_data = get_all_spreadsheet_records(
-                        'mio-cov-cases-f7af03231c46.json', 
+                        'mio-cov-cases.json', 
                         'https://docs.google.com/spreadsheets/d/19-pUdErRJR_PCjy_oDeG89_z2VV5YdWRB9saPfFPkSw')
 
     return clean_records(records_data)

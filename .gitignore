@@ -136,3 +136,4 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+mio-cov-cases-f745341bb2c5.json
