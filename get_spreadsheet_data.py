@@ -1,6 +1,7 @@
 import gspread
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
+import datetime as dt
 
 def get_all_spreadsheet_records(json_file: str, spreadsheet_url: str) -> list:
     # define the scope
@@ -18,9 +19,15 @@ def get_all_spreadsheet_records(json_file: str, spreadsheet_url: str) -> list:
 
 def clean_records(records:  list) -> list:
     records_clean = []
-
+    year = 2020
     for record in records:
-        records_clean.append({'Data':record['Data'], 'Nowe': int(record['Nowe przypadki'].strip(' +'))})
+        date_tmp = str(record['Data']).split('.')
+        if date_tmp[1] == "1":
+            date_tmp[1] = "10"
+        date = dt.date(year, int(date_tmp[1]), int(date_tmp[0]))
+        records_clean.append({'Data':date, 'Nowe': int(record['Nowe przypadki'].strip(' +'))})
+        if date_tmp[0] == "31" and date_tmp[1] == "12":
+            year += 1
 
     return records_clean
 
@@ -36,7 +43,7 @@ def get_all_records_dataframe() -> pd.DataFrame:
 
 def print_records(records: list) -> None:
     for record in records:
-        print(record)
+        print(f"{record['Data']} {record['Nowe']}")
 
 if __name__ == '__main__':
     print_records(get_all_records_list())
