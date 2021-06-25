@@ -3,6 +3,11 @@ import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 import datetime as dt
 from scipy.stats import pearsonr
+import numpy as np 
+
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.layers import Dense, Dropout, LSTM
+from tensorflow.keras.models import Sequential
 
 def get_all_spreadsheet_records(json_file: str, spreadsheet_url: str) -> list:
     # define the scope
@@ -55,7 +60,15 @@ if __name__ == '__main__':
         tests.append(record['Testy'])
         new_cases.append(record['Nowe'])
 
+    tests = np.array(tests)
+    new_cases = np.array(new_cases)
+
     corr, _ = pearsonr(tests, new_cases)
     print('Pearsons correlation: %.3f' % corr)
 
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_tests = scaler.fit_transform(tests.reshape(-1,1))
+    scaled_new_cases = scaler.fit_transform(new_cases.reshape(-1,1))
 
+    print(scaled_tests)
+    print(scaled_new_cases)
