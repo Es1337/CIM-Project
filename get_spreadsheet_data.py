@@ -2,6 +2,7 @@ import gspread
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials
 import datetime as dt
+from scipy.stats import pearsonr
 
 def get_all_spreadsheet_records(json_file: str, spreadsheet_url: str) -> list:
     # define the scope
@@ -25,7 +26,7 @@ def clean_records(records:  list) -> list:
         if date_tmp[1] == "1":
             date_tmp[1] = "10"
         date = dt.date(year, int(date_tmp[1]), int(date_tmp[0]))
-        records_clean.append({'Data':date, 'Nowe': int(record['Nowe przypadki'].strip(' +'))})
+        records_clean.append({'Data':date, 'Nowe': int(record['Nowe przypadki'].strip(' +')), 'Testy': int(record['Dobowa liczba wykonanych testów'])})
         if date_tmp[0] == "31" and date_tmp[1] == "12":
             year += 1
 
@@ -43,8 +44,18 @@ def get_all_records_dataframe() -> pd.DataFrame:
 
 def print_records(records: list) -> None:
     for record in records:
-        print(f"{record['Data']} {record['Nowe']}")
+        print(f"{record['Data']} {record['Nowe']} {record['Testy']}")
 
 if __name__ == '__main__':
-    print_records(get_all_records_list())
+    #print_records(get_all_records_list())
+    data = get_all_records_list()
+    tests = []
+    new_cases = []
+    for record in data:
+        tests.append(record['Testy'])
+        new_cases.append(record['Nowe'])
+
+    corr, _ = pearsonr(tests, new_cases)
+    print('Pearsons correlation: %.3f' % corr)
+
 
