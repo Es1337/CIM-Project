@@ -4,6 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import datetime as dt
 from scipy.stats import pearsonr
 import numpy as np 
+import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.layers import Dense, Dropout, LSTM
@@ -70,5 +71,49 @@ if __name__ == '__main__':
     scaled_tests = scaler.fit_transform(tests.reshape(-1,1))
     scaled_new_cases = scaler.fit_transform(new_cases.reshape(-1,1))
 
-    print(scaled_tests)
-    print(scaled_new_cases)
+    #print(scaled_tests)
+    #print(scaled_new_cases)
+    print(len(scaled_tests))
+    print(len(scaled_new_cases))
+    scaled_data = np.append(scaled_tests, scaled_new_cases, axis=1)
+    #print(scaled_data)
+    train_data = scaled_data[:300, :]
+    test_data = scaled_data[300:, :]
+
+    prediction_days = 60
+
+
+    x_train = []
+    y_train = []
+
+    for i in range(prediction_days, len(train_data)):
+        x_train.append(train_data[i-prediction_days:i, :])
+        y_train.append(train_data[i, 0])
+    x_train = np.array(x_train)
+    y_train = np.array(y_train)
+    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 2))
+    print(x_train)
+
+    model = Sequential()
+    model.add(LSTM(units=100, input_shape=(x_train.shape[1], 2)))
+    model.add(Dense(units=1))
+
+    model.compile(optimizer='adam', loss='mae')
+    model.fit(x_train, y_train, epochs=25, batch_size=32)
+
+    actual_new_cases = new_cases[300+prediction_days:]
+
+    x_test = []
+    for i in range(prediction_days, len(test_data)):
+        x_test.append(test_data[i-prediction_days:i, :])
+
+    x_test = np.array(x_test)
+    x_test = np.reshape(x_test, (x_test.shape[0], x_train.shape[1], 2))
+
+    prediction = model.predict(x_test)
+    prediction = scaler.inverse_transform(prediction)
+
+    plt.plot(actual_new_cases, color='black', label='Actual new cases')
+    plt.plot(prediction, color='green', label='Predicted cases')
+    plt.legend(loc='upper right')
+    plt.show()
