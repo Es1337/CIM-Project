@@ -6,7 +6,7 @@ from scipy.stats import pearsonr
 import numpy as np 
 import matplotlib.pyplot as plt
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tensorflow.keras.layers import Dense, Dropout, LSTM
 from tensorflow.keras.models import Sequential
 
@@ -67,18 +67,19 @@ if __name__ == '__main__':
     corr, _ = pearsonr(tests, new_cases)
     print('Pearsons correlation: %.3f' % corr)
 
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_tests = scaler.fit_transform(tests.reshape(-1,1))
-    scaled_new_cases = scaler.fit_transform(new_cases.reshape(-1,1))
+    scaler_cases = MinMaxScaler(feature_range=(0, 1))
+    scaler_tests = MinMaxScaler(feature_range=(0, 1))
+    scaled_tests = scaler_tests.fit_transform(tests.reshape(-1,1))
+    scaled_new_cases = scaler_cases.fit_transform(new_cases.reshape(-1,1))
+
+
 
     #print(scaled_tests)
     #print(scaled_new_cases)
-    print(len(scaled_tests))
-    print(len(scaled_new_cases))
     scaled_data = np.append(scaled_tests, scaled_new_cases, axis=1)
-    #print(scaled_data)
-    train_data = scaled_data[:300, :]
-    test_data = scaled_data[300:, :]
+    training_days = 300
+    train_data = scaled_data[:training_days, :]
+    test_data = scaled_data[training_days:, :]
 
     prediction_days = 60
 
@@ -92,26 +93,31 @@ if __name__ == '__main__':
     x_train = np.array(x_train)
     y_train = np.array(y_train)
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 2))
-    print(x_train)
-
-    model = Sequential()
-    model.add(LSTM(units=100, input_shape=(x_train.shape[1], 2)))
-    model.add(Dense(units=1))
-
-    model.compile(optimizer='adam', loss='mae')
-    model.fit(x_train, y_train, epochs=25, batch_size=32)
-
-    actual_new_cases = new_cases[300+prediction_days:]
+    #print(x_train)
 
     x_test = []
+    actual_new_cases = []
     for i in range(prediction_days, len(test_data)):
         x_test.append(test_data[i-prediction_days:i, :])
+        actual_new_cases.append(test_data[i, 0])
 
     x_test = np.array(x_test)
-    x_test = np.reshape(x_test, (x_test.shape[0], x_train.shape[1], 2))
+    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 2))
+    #actual_new_cases = new_cases[training_days+prediction_days:]
 
+    model = Sequential()
+    model.add(LSTM(units=150, input_shape=(x_train.shape[1], 2)))
+    model.add(Dense(units=1))
+
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    model.fit(x_train, y_train, epochs=50, batch_size=10)
+    
     prediction = model.predict(x_test)
-    prediction = scaler.inverse_transform(prediction)
+    prediction = scaler_cases.inverse_transform(prediction)
+    actual_new_cases = np.array(actual_new_cases)
+    actual_new_cases = actual_new_cases.reshape(-1, 1)
+    actual_new_cases = scaler_cases.inverse_transform(actual_new_cases)
+
 
     plt.plot(actual_new_cases, color='black', label='Actual new cases')
     plt.plot(prediction, color='green', label='Predicted cases')
