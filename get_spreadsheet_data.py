@@ -5,7 +5,9 @@ import datetime as dt
 from scipy.stats import pearsonr
 import numpy as np 
 import matplotlib.pyplot as plt
+import math
 
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tensorflow.keras.layers import Dense, Dropout, LSTM
 from tensorflow.keras.models import Sequential
@@ -52,6 +54,8 @@ def print_records(records: list) -> None:
     for record in records:
         print(f"{record['Data']} {record['Nowe']} {record['Testy']}")
 
+
+
 if __name__ == '__main__':
     #print_records(get_all_records_list())
     data = get_all_records_list()
@@ -65,41 +69,34 @@ if __name__ == '__main__':
     new_cases = np.array(new_cases)
 
     corr, _ = pearsonr(tests, new_cases)
-    print('Pearsons correlation: %.3f' % corr)
+    print('\nPearsons correlation: %.3f' % corr)
 
-    scaler_cases = MinMaxScaler(feature_range=(0, 1))
+    scaler_cases = MinMaxScaler()
     scaler_tests = MinMaxScaler(feature_range=(0, 1))
     scaled_tests = scaler_tests.fit_transform(tests.reshape(-1,1))
     scaled_new_cases = scaler_cases.fit_transform(new_cases.reshape(-1,1))
 
-
-
-    #print(scaled_tests)
-    #print(scaled_new_cases)
     scaled_data = np.append(scaled_tests, scaled_new_cases, axis=1)
     training_days = 300
     train_data = scaled_data[:training_days, :]
     test_data = scaled_data[training_days:, :]
 
     prediction_days = 60
-
-
     x_train = []
     y_train = []
 
     for i in range(prediction_days, len(train_data)):
         x_train.append(train_data[i-prediction_days:i, :])
-        y_train.append(train_data[i, 0])
+        y_train.append(train_data[i, 1])
     x_train = np.array(x_train)
     y_train = np.array(y_train)
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 2))
-    #print(x_train)
 
     x_test = []
     actual_new_cases = []
     for i in range(prediction_days, len(test_data)):
         x_test.append(test_data[i-prediction_days:i, :])
-        actual_new_cases.append(test_data[i, 0])
+        actual_new_cases.append(test_data[i, 1])
 
     x_test = np.array(x_test)
     x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 2))
@@ -110,7 +107,7 @@ if __name__ == '__main__':
     model.add(Dense(units=1))
 
     model.compile(optimizer='adam', loss='mean_squared_error')
-    model.fit(x_train, y_train, epochs=50, batch_size=10)
+    model.fit(x_train, y_train, epochs=50, batch_size=32)
     
     prediction = model.predict(x_test)
     prediction = scaler_cases.inverse_transform(prediction)
@@ -118,8 +115,19 @@ if __name__ == '__main__':
     actual_new_cases = actual_new_cases.reshape(-1, 1)
     actual_new_cases = scaler_cases.inverse_transform(actual_new_cases)
 
-
     plt.plot(actual_new_cases, color='black', label='Actual new cases')
     plt.plot(prediction, color='green', label='Predicted cases')
+    plt.legend(loc='upper right')
+    plt.show()
+
+    rms = mean_squared_error(actual_new_cases, prediction, squared=False)
+    print("\nRMSE:")
+    print(rms)
+
+    error = []
+    for i in range(len(prediction)):
+        error.append(math.fabs(prediction[i] - actual_new_cases[i]))
+
+    plt.plot(error, color='red', label='Error: |prediction - actual_value|')
     plt.legend(loc='upper right')
     plt.show()
